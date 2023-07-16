@@ -1,17 +1,17 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
-import {  getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyByvK7GYhb9_C0WjRebnfGs56jZi6BHgQ4",
+  apiKey: "AIzaSyByvK7GYhb9_C0WjRebnfGs56jZi6BHgQ4",
     authDomain: "to-do-application-8bfc8.firebaseapp.com",
     projectId: "to-do-application-8bfc8",
     storageBucket: "to-do-application-8bfc8.appspot.com",
     messagingSenderId: "71146767266",
     appId: "1:71146767266:web:ada9dabf21a6025786e8fb"
 };
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -22,7 +22,7 @@ const newTaskInput = document.getElementById("new-task");
 const tasksList = document.getElementById("tasks");
 
 // Add event listener for adding new tasks
-newTaskInput.addEventListener("keypress", function (event) {
+newTaskInput.addEventListener("keyup", function (event) {
   if (event.key === "Enter" && newTaskInput.value.trim() !== "") {
     addTask(newTaskInput.value.trim());
     newTaskInput.value = "";
@@ -37,7 +37,8 @@ async function addTask(taskText) {
   await addDoc(tasksRef, {
     taskText: taskText,
     completed: false,
-    order: taskCount // Set order based on task count
+    createdAt: new Date(),
+    order: -taskCount // Set order in reverse, so newer tasks have lower values
   });
 }
 
@@ -45,7 +46,7 @@ async function addTask(taskText) {
 function renderTasks(snapshot) {
   tasksList.innerHTML = "";
 
-  // Sort tasks based on the order field
+  // Sort tasks based on the order field in ascending order
   const sortedTasks = snapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() }))
     .sort((a, b) => a.order - b.order);
@@ -138,10 +139,7 @@ function showDeleteConfirmation(taskId) {
 // Function to update a task
 async function updateTask(taskId, newTaskText) {
   const taskRef = doc(tasksRef, taskId);
-  const snapshot = await getDocs(tasksRef);
-  const taskCount = snapshot.size;
-
-  await updateDoc(taskRef, { taskText: newTaskText, order: taskCount });
+  await updateDoc(taskRef, { taskText: newTaskText });
 }
 
 // Function to delete a task
@@ -152,5 +150,5 @@ async function deleteTask(taskId) {
 
 // Listen for changes in the database and update the UI
 onSnapshot(tasksRef, function (snapshot) {
-  renderTasks(snapshot.docs);
+  renderTasks(snapshot);
 });
