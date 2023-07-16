@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+import {  getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -33,6 +34,7 @@ async function addTask(taskText) {
   await addDoc(tasksRef, {
     taskText: taskText,
     completed: false,
+    order: Date.now() // Set order based on current timestamp
   });
 }
 
@@ -40,16 +42,20 @@ async function addTask(taskText) {
 function renderTasks(snapshot) {
   tasksList.innerHTML = "";
 
-  snapshot.forEach(function (doc) {
-    const key = doc.id;
-    const task = doc.data();
+  // Sort tasks based on the order field
+  const sortedTasks = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a, b) => a.order - b.order);
+
+  sortedTasks.forEach(function (task) {
+    const { id, taskText } = task;
 
     const li = document.createElement("li");
     li.className = "task-item";
 
-    const taskText = document.createElement("span");
-    taskText.className = "task-text";
-    taskText.textContent = task.taskText;
+    const taskTextElement = document.createElement("span");
+    taskTextElement.className = "task-text";
+    taskTextElement.textContent = taskText;
 
     const actionButtons = document.createElement("div");
     actionButtons.className = "action-buttons";
@@ -58,20 +64,20 @@ function renderTasks(snapshot) {
     editButton.className = "edit-button";
     editButton.textContent = "Edit";
     editButton.addEventListener("click", function () {
-      showEditPrompt(key, task.taskText);
+      showEditPrompt(id, taskText);
     });
 
     const deleteButton = document.createElement("button");
     deleteButton.className = "delete-button";
     deleteButton.textContent = "Delete";
     deleteButton.addEventListener("click", function () {
-      showDeleteConfirmation(key);
+      showDeleteConfirmation(id);
     });
 
     actionButtons.appendChild(editButton);
     actionButtons.appendChild(deleteButton);
 
-    li.appendChild(taskText);
+    li.appendChild(taskTextElement);
     li.appendChild(actionButtons);
 
     tasksList.appendChild(li);
@@ -80,40 +86,35 @@ function renderTasks(snapshot) {
 
 // Function to show the edit prompt using SweetAlert2
 function showEditPrompt(taskId, currentTaskText) {
-    Swal.fire({
-      title: "Edit Task",
-      input: "textarea",
-      inputLabel: "Task Text",
-      inputPlaceholder: "Type the new task text here...",
-      inputValue: currentTaskText,
-      inputAttributes: {
-        "aria-label": "Type the new task text here",
-      },
-      showCancelButton: true,
-      confirmButtonText: "Save",
-      cancelButtonText: "Cancel",
-      inputValidator: (value) => {
-        if (!value) {
-          return "You need to enter a task text!";
-        }
-      },
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const newTaskText = result.value.trim();
-        updateTask(taskId, newTaskText);
-        Swal.fire({
-          title: "Task Updated",
-          text: newTaskText,
-          icon: "success",
-        });
+  Swal.fire({
+    title: "Edit Task",
+    input: "textarea",
+    inputLabel: "Task Text",
+    inputPlaceholder: "Type the new task text here...",
+    inputValue: currentTaskText,
+    inputAttributes: {
+      "aria-label": "Type the new task text here",
+    },
+    showCancelButton: true,
+    confirmButtonText: "Save",
+    cancelButtonText: "Cancel",
+    inputValidator: (value) => {
+      if (!value) {
+        return "You need to enter a task text!";
       }
-    });
-  }
-  
-  
-  
-  
-  
+    },
+  }).then((result) => {
+    if (result.isConfirmed) {
+      const newTaskText = result.value.trim();
+      updateTask(taskId, newTaskText);
+      Swal.fire({
+        title: "Task Updated",
+        text: newTaskText,
+        icon: "success",
+      });
+    }
+  });
+}
 
 // Function to show the delete confirmation using SweetAlert2
 function showDeleteConfirmation(taskId) {
