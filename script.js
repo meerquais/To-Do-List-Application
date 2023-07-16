@@ -31,10 +31,13 @@ newTaskInput.addEventListener("keypress", function (event) {
 
 // Function to add a new task
 async function addTask(taskText) {
+  const snapshot = await getDocs(tasksRef);
+  const taskCount = snapshot.size;
+
   await addDoc(tasksRef, {
     taskText: taskText,
     completed: false,
-    order: Date.now() // Set order based on current timestamp
+    order: taskCount // Set order based on task count
   });
 }
 
@@ -135,7 +138,10 @@ function showDeleteConfirmation(taskId) {
 // Function to update a task
 async function updateTask(taskId, newTaskText) {
   const taskRef = doc(tasksRef, taskId);
-  await updateDoc(taskRef, { taskText: newTaskText });
+  const snapshot = await getDocs(tasksRef);
+  const taskCount = snapshot.size;
+
+  await updateDoc(taskRef, { taskText: newTaskText, order: taskCount });
 }
 
 // Function to delete a task
